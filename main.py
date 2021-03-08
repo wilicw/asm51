@@ -6,6 +6,23 @@ ROM = [0x00] * (2**16)
 PTR = 0
 label_dict = {}
 
+SFRs = {}
+
+
+class syntax_match():
+    def __init__(self) -> None:
+        self.label = lambda x: re.match(r"^(\w*?):", x)  # MAIN:
+        self.normal_word = lambda x: re.match(r"^(\w*?)$", x)  # LABEL
+        self.hex = lambda x: re.match(r"^(\d*?)H", x)  # EFH
+        self.dec = lambda x: re.match(r"^(\d*?)", x)  # 255
+        self.imm_hex = lambda x: re.match(r"^#(\d*?)H", x)  # hashtag EEH
+        self.imm_dec = lambda x: re.match(r"^#(\d*?)", x)  # hashtag 255
+        self.internal_R_ram = lambda x: re.match(r"^@R(\d?)", x)  # @R0
+        self.general_reg = lambda x: re.match(r"^R(\d?)", x)  # R7
+
+
+sym = syntax_match()
+
 
 def help():
     print("usage: asm51 [--] filename")
@@ -28,7 +45,7 @@ def ins_err(ins, line):
 def search_label(label, bit):
     if label not in label_dict.keys():
         err(f"label: {label} not found.")
-    addr = ("{:0"+str(bit)+"b}").format(label_dict[label])
+    addr = ("{:0" + str(bit) + "b}").format(label_dict[label])
     return addr
 
 
@@ -51,14 +68,21 @@ def check_args(ins, args, num, f_line):
         ins_err(ins, f_line)
 
 
-def create_label(asm_code):
-    global PTR
+def remove_space_comment(asm_code):
+    clean_asm = []
     for f_line, ll in enumerate(asm_code.split("\n")):
+        f_line += 1
         ll = ll.lstrip()
         ll = re.sub(';(.*)', "", ll)
-        # empty line
         if len(ll) == 0:
             continue
+        clean_asm.append((f_line, ll))
+    return clean_asm
+
+
+def create_label(asm_code):
+    global PTR
+    for f_line, ll in asm_code:
         # label
         label = re.match(r"^(\w*?):", ll)
         if label != None:
@@ -72,21 +96,20 @@ def create_label(asm_code):
         args = args.upper().replace(" ", "").replace("\t", "").split(",")
         if ins == "ORG":
             check_args(ins, args, [1], f_line)
-            if (v := re.match(r"^(\d*?)H", args[0])) != None:
+            if (v := sym.hex(args[0])) != None:
                 PTR = int(v[1], 16)
+            elif (v := sym.dec(args[0])) != None:
+                PTR = int(v[1])
+            else:
+                ins_err(ins, f_line)
 
 
 def parser(asm_code):
     global PTR
+    asm_code = remove_space_comment(asm_code)
     create_label(asm_code)
     PTR = 0
-    for f_line, ll in enumerate(asm_code.split("\n")):
-        f_line += 1
-        ll = ll.lstrip()
-        ll = re.sub(';(.*)', "", ll)
-        # empty line
-        if len(ll) == 0:
-            continue
+    for f_line, ll in asm_code:
         # instructions
         instruction = ll.split()
         ins, args = instruction[0], "".join(instruction[1:])
@@ -95,24 +118,33 @@ def parser(asm_code):
         print(f"I: {ins} {args}")
         if ins == "ORG":
             check_args(ins, args, [1], f_line)
-            if (v := re.match(r"^(\d*?)H", args[0])) != None:
+            if (v := sym.hex(args[0])) != None:
                 PTR = int(v[1], 16)
+            elif (v := sym.dec(args[0])) != None:
+                PTR = int(v[1])
+            else:
+                ins_err(ins, f_line)
         elif ins == "NOP":
             write_rom([0x01])
         elif ins == "AJMP":
             check_args(ins, args, [1], f_line)
-            if (v := re.match(r"^(\w*?)$", args[0])) != None:
+            if (v := sym.normal_word(args[0])) != None:
                 addr11 = search_label(v[0], 11)
-                write_rom([int(addr11[8:][::-1] + "00001", 2),
-                           int(addr11[0:8][::-1], 2)])
+                write_rom([
+                    int(addr11[8:][::-1] + "00001", 2),
+                    int(addr11[0:8][::-1], 2)
+                ])
             else:
                 ins_err(ins, f_line)
         elif ins == "LJMP":
             check_args(ins, args, [1], f_line)
-            if (v := re.match(r"^(\w*?)$", args[0])) != None:
+            if (v := sym.normal_word(args[0])) != None:
                 addr16 = search_label(v[0], 16)
-                write_rom([0x02, int(addr16[8:16][::-1], 2),
-                           int(addr16[0:8][::-1], 2)])
+                write_rom([
+                    0x02,
+                    int(addr16[8:16][::-1], 2),
+                    int(addr16[0:8][::-1], 2)
+                ])
             else:
                 ins_err(ins, f_line)
         elif ins == "RR":
@@ -125,13 +157,13 @@ def parser(asm_code):
                 write_rom([0x04])
             elif args[0] == "DPTR":
                 write_rom([0xA3])
-            elif (v := re.match(r"^@R(\d?)", args[0])) != None:
+            elif (v := sym.internal_R_ram(args[0])) != None:
                 write_rom([0x06 + int(v[1])])
-            elif (v := re.match(r"^R(\d?)", args[0])) != None:
+            elif (v := sym.general_reg(args[0])) != None:
                 write_rom([0x08 + int(v[1])])
-            elif (v := re.match(r"^(\d*?)H", args[0])) != None:
+            elif (v := sym.hex(args[0])) != None:
                 write_rom([0x05, int(v[1], 16)])
-            elif (v := re.match(r"^(\d*?)", args[0])) != None:
+            elif (v := sym.dec(args[0])) != None:
                 write_rom([0x05, int(v[1])])
             else:
                 ins_err(ins, f_line)
@@ -139,18 +171,23 @@ def parser(asm_code):
             check_args(ins, args, [2], f_line)
         elif ins == "ACALL":
             check_args(ins, args, [1], f_line)
-            if (v := re.match(r"^(\w*?)$", args[0])) != None:
+            if (v := sym.normal_word(args[0])) != None:
                 addr11 = search_label(v[0], 11)
-                write_rom([int(addr11[8:][::-1] + "10001", 2),
-                           int(addr11[0:8][::-1], 2)])
+                write_rom([
+                    int(addr11[8:][::-1] + "10001", 2),
+                    int(addr11[0:8][::-1], 2)
+                ])
             else:
                 ins_err(ins, f_line)
         elif ins == "LCALL":
             check_args(ins, args, [1], f_line)
-            if (v := re.match(r"^(\w*?)$", args[0])) != None:
+            if (v := sym.normal_word(args[0])) != None:
                 addr16 = search_label(v[0], 16)
-                write_rom([0x12, int(addr16[8:16][::-1], 2),
-                           int(addr16[0:8][::-1], 2)])
+                write_rom([
+                    0x12,
+                    int(addr16[8:16][::-1], 2),
+                    int(addr16[0:8][::-1], 2)
+                ])
             else:
                 ins_err(ins, f_line)
         elif ins == "RRC":
@@ -161,13 +198,13 @@ def parser(asm_code):
             check_args(ins, args, [1], f_line)
             if args[0] == "A":
                 write_rom([0x14])
-            elif (v := re.match(r"^@R(\d?)", args[0])) != None:
+            elif (v := sym.internal_R_ram(args[0])) != None:
                 write_rom([0x16 + int(v[1])])
-            elif (v := re.match(r"^R(\d?)", args[0])) != None:
+            elif (v := sym.general_reg(args[0])) != None:
                 write_rom([0x18 + int(v[1])])
-            elif (v := re.match(r"^(\d*?)H", args[0])) != None:
+            elif (v := sym.hex(args[0])) != None:
                 write_rom([0x15, int(v[1], 16)])
-            elif (v := re.match(r"^(\d*?)", args[0])) != None:
+            elif (v := sym.dec(args[0])) != None:
                 write_rom([0x15, int(v[1])])
             else:
                 ins_err(ins, f_line)
@@ -185,17 +222,17 @@ def parser(asm_code):
                 pass
             else:
                 ins_err(ins, f_line)
-            if (v := re.match(r"^@R(\d?)", args[1])) != None:
+            if (v := sym.internal_R_ram(args[1])) != None:
                 write_rom([0x26 + int(v[1])])
-            elif (v := re.match(r"^R(\d?)", args[1])) != None:
+            elif (v := sym.general_reg(args[1])) != None:
                 write_rom([0x28 + int(v[1])])
-            elif (v := re.match(r"^(\d*?)H", args[1])) != None:
+            elif (v := sym.hex(args[1])) != None:
                 write_rom([0x25, int(v[1], 16)])
-            elif (v := re.match(r"^(\d*?)", args[1])) != None:
+            elif (v := sym.dec(args[1])) != None:
                 write_rom([0x25, int(v[1])])
-            elif (v := re.match(r"^#(\d*?)H", args[1])) != None:
+            elif (v := sym.imm_hex(args[1])) != None:
                 write_rom([0x24, int(v[1], 16)])
-            elif (v := re.match(r"^#(\d*?)", args[1])) != None:
+            elif (v := sym.imm_dec(args[1])) != None:
                 write_rom([0x24, int(v[1])])
             else:
                 ins_err(ins, f_line)
@@ -213,41 +250,22 @@ def parser(asm_code):
                 pass
             else:
                 ins_err(ins, f_line)
-            if (v := re.match(r"^@R(\d?)", args[1])) != None:
+            if (v := sym.internal_R_ram(args[1])) != None:
                 write_rom([0x36 + int(v[1])])
-            elif (v := re.match(r"^R(\d?)", args[1])) != None:
+            elif (v := sym.general_reg(args[1])) != None:
                 write_rom([0x38 + int(v[1])])
-            elif (v := re.match(r"^(\d*?)H", args[1])) != None:
+            elif (v := sym.hex(args[1])) != None:
                 write_rom([0x35, int(v[1], 16)])
-            elif (v := re.match(r"^(\d*?)", args[1])) != None:
+            elif (v := sym.dec(args[1])) != None:
                 write_rom([0x35, int(v[1])])
-            elif (v := re.match(r"^#(\d*?)H", args[1])) != None:
+            elif (v := sym.imm_hex(args[1])) != None:
                 write_rom([0x34, int(v[1], 16)])
-            elif (v := re.match(r"^#(\d*?)", args[1])) != None:
+            elif (v := sym.imm_dec(args[1])) != None:
                 write_rom([0x34, int(v[1])])
             else:
                 ins_err(ins, f_line)
         elif ins == "JC":
             check_args(ins, args, [1], f_line)
-        elif ins == "ADDC":
-            if args[0] == "A":
-                pass
-            else:
-                ins_err(ins, f_line)
-            if (v := re.match(r"^@R(\d?)", args[1])) != None:
-                write_rom([0x36 + int(v[1])])
-            elif (v := re.match(r"^R(\d?)", args[1])) != None:
-                write_rom([0x38 + int(v[1])])
-            elif (v := re.match(r"^(\d*?)H", args[1])) != None:
-                write_rom([0x35, int(v[1], 16)])
-            elif (v := re.match(r"^(\d*?)", args[1])) != None:
-                write_rom([0x35, int(v[1])])
-            elif (v := re.match(r"^#(\d*?)H", args[1])) != None:
-                write_rom([0x34, int(v[1], 16)])
-            elif (v := re.match(r"^#(\d*?)", args[1])) != None:
-                write_rom([0x34, int(v[1])])
-            else:
-                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)

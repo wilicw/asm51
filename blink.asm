@@ -3,6 +3,7 @@
   ORG   0050H
 
 MAIN:
+  INC   A
   MOV   A, #7FH
 
 ; loop
