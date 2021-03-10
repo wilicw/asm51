@@ -6,7 +6,29 @@ ROM = [0x00] * (2**16)
 PTR = 0
 label_dict = {}
 
-SFRs = {}
+SFRs = {
+    "A": 0xE0,
+    "B": 0xF0,
+    "PSW": 0xD0,
+    "IP": 0xB8,
+    "P3": 0xB0,
+    "IE": 0xA2,
+    "P2": 0xA0,
+    "SBUF": 0x99,
+    "SCON": 0x98,
+    "P1": 0x90,
+    "TH1": 0x8D,
+    "TH0": 0x8C,
+    "TL1": 0x8B,
+    "TL0": 0x8A,
+    "TMOD": 0x89,
+    "TCON": 0x88,
+    "PCON": 0x87,
+    "DPH": 0x83,
+    "DPL": 0x82,
+    "SP": 0x81,
+    "P0": 0x80,
+}
 
 
 class syntax_match():
@@ -20,8 +42,18 @@ class syntax_match():
         self.internal_R_ram = lambda x: re.match(r"^@R(\d?)", x)  # @R0
         self.general_reg = lambda x: re.match(r"^R(\d?)", x)  # R7
 
+    def sfr(self, x):
+        for name in SFRs.keys():
+            if x == name:
+                return x
+        return None
+
 
 sym = syntax_match()
+
+
+def sfr_hex(name):
+    return SFRs[name]
 
 
 def help():
@@ -66,6 +98,10 @@ def write_rom(opcodes):
 def check_args(ins, args, num, f_line):
     if len(args) not in num:
         ins_err(ins, f_line)
+
+
+def print_ROM():
+    print(" ".join([hex(i) for i in ROM[:100]]))
 
 
 def remove_space_comment(asm_code):
@@ -161,6 +197,8 @@ def parser(asm_code):
                 write_rom([0x06 + int(v[1])])
             elif (v := sym.general_reg(args[0])) != None:
                 write_rom([0x08 + int(v[1])])
+            elif (v := sym.sfr(args[0])) != None:
+                write_rom([0x05, sfr_hex(v)])
             elif (v := sym.hex(args[0])) != None:
                 write_rom([0x05, int(v[1], 16)])
             elif (v := sym.dec(args[0])) != None:
@@ -202,6 +240,8 @@ def parser(asm_code):
                 write_rom([0x16 + int(v[1])])
             elif (v := sym.general_reg(args[0])) != None:
                 write_rom([0x18 + int(v[1])])
+            elif (v := sym.sfr(args[0])) != None:
+                write_rom([0x15, sfr_hex(v)])
             elif (v := sym.hex(args[0])) != None:
                 write_rom([0x15, int(v[1], 16)])
             elif (v := sym.dec(args[0])) != None:
@@ -226,6 +266,8 @@ def parser(asm_code):
                 write_rom([0x26 + int(v[1])])
             elif (v := sym.general_reg(args[1])) != None:
                 write_rom([0x28 + int(v[1])])
+            elif (v := sym.sfr(args[0])) != None:
+                write_rom([0x25, sfr_hex(v)])
             elif (v := sym.hex(args[1])) != None:
                 write_rom([0x25, int(v[1], 16)])
             elif (v := sym.dec(args[1])) != None:
@@ -254,6 +296,8 @@ def parser(asm_code):
                 write_rom([0x36 + int(v[1])])
             elif (v := sym.general_reg(args[1])) != None:
                 write_rom([0x38 + int(v[1])])
+            elif (v := sym.sfr(args[0])) != None:
+                write_rom([0x35, sfr_hex(v)])
             elif (v := sym.hex(args[1])) != None:
                 write_rom([0x35, int(v[1], 16)])
             elif (v := sym.dec(args[1])) != None:
@@ -269,7 +313,7 @@ def parser(asm_code):
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
-    print(ROM[:100])
+    print_ROM()
     exit(0)
 
 
