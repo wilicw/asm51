@@ -35,10 +35,10 @@ class syntax_match():
     def __init__(self) -> None:
         self.label = lambda x: re.match(r"^(\w*?):", x)  # MAIN:
         self.normal_word = lambda x: re.match(r"^(\w*?)$", x)  # LABEL
-        self.hex = lambda x: re.match(r"^(\d*?)H", x)  # EFH
-        self.dec = lambda x: re.match(r"^(\d*?)", x)  # 255
-        self.imm_hex = lambda x: re.match(r"^#(\d*?)H", x)  # hashtag EEH
-        self.imm_dec = lambda x: re.match(r"^#(\d*?)", x)  # hashtag 255
+        self.hex = lambda x: re.match(r"^([0-9A-F]+?)H$", x)  # EEH
+        self.dec = lambda x: re.match(r"^([0-9]+?)$", x)  # 255
+        self.imm_hex = lambda x: re.match(r"^#([0-9A-F]+?)H$", x)  # hashtag EEH
+        self.imm_dec = lambda x: re.match(r"^#([0-9]+?)$", x)  # hashtag 255
         self.internal_R_ram = lambda x: re.match(r"^@R(\d?)", x)  # @R0
         self.general_reg = lambda x: re.match(r"^R(\d?)", x)  # R7
 
