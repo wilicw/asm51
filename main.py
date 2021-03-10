@@ -266,7 +266,7 @@ def parser(asm_code):
                 write_rom([0x26 + int(v[1])])
             elif (v := sym.general_reg(args[1])) != None:
                 write_rom([0x28 + int(v[1])])
-            elif (v := sym.sfr(args[0])) != None:
+            elif (v := sym.sfr(args[1])) != None:
                 write_rom([0x25, sfr_hex(v)])
             elif (v := sym.hex(args[1])) != None:
                 write_rom([0x25, int(v[1], 16)])
@@ -296,7 +296,7 @@ def parser(asm_code):
                 write_rom([0x36 + int(v[1])])
             elif (v := sym.general_reg(args[1])) != None:
                 write_rom([0x38 + int(v[1])])
-            elif (v := sym.sfr(args[0])) != None:
+            elif (v := sym.sfr(args[1])) != None:
                 write_rom([0x35, sfr_hex(v)])
             elif (v := sym.hex(args[1])) != None:
                 write_rom([0x35, int(v[1], 16)])
@@ -309,6 +309,57 @@ def parser(asm_code):
             else:
                 ins_err(ins, f_line)
         elif ins == "JC":
+            check_args(ins, args, [1], f_line)
+        elif ins == "ORL":
+            if args[0] == "A":
+                if (v := sym.internal_R_ram(args[1])) != None:
+                    write_rom([0x46 + int(v[1])])
+                elif (v := sym.general_reg(args[1])) != None:
+                    write_rom([0x48 + int(v[1])])
+                elif (v := sym.sfr(args[1])) != None:
+                    write_rom([0x45, sfr_hex(v)])
+                elif (v := sym.hex(args[1])) != None:
+                    write_rom([0x45, int(v[1], 16)])
+                elif (v := sym.dec(args[1])) != None:
+                    write_rom([0x45, int(v[1])])
+                elif (v := sym.imm_hex(args[1])) != None:
+                    write_rom([0x44, int(v[1], 16)])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([0x44, int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            elif args[1] == "A":
+                if (v := sym.sfr(args[0])) != None:
+                    write_rom([0x42, sfr_hex(v)])
+                elif (v := sym.hex(args[0])) != None:
+                    write_rom([0x42, int(v[1], 16)])
+                elif (v := sym.dec(args[0])) != None:
+                    write_rom([0x42, int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            elif (v:= sym.imm_hex(args[1]))!=None:
+                immediate = int(v[1], 16)
+                if (v := sym.sfr(args[0])) != None:
+                    write_rom([0x43, sfr_hex(v), immediate])
+                elif (v := sym.hex(args[0])) != None:
+                    write_rom([0x43, int(v[1], 16), immediate])
+                elif (v := sym.dec(args[0])) != None:
+                    write_rom([0x43, int(v[1]), immediate])
+                else:
+                    ins_err(ins, f_line)
+            elif (v:= sym.imm_dec(args[1]))!=None:
+                immediate = int(v[1])
+                if (v := sym.sfr(args[0])) != None:
+                    write_rom([0x43, sfr_hex(v), immediate])
+                elif (v := sym.hex(args[0])) != None:
+                    write_rom([0x43, int(v[1], 16), immediate])
+                elif (v := sym.dec(args[0])) != None:
+                    write_rom([0x43, int(v[1]), immediate])
+                else:
+                    ins_err(ins, f_line)
+            else:
+                ins_err(ins, f_line)
+        elif ins == "JNC":
             check_args(ins, args, [1], f_line)
         else:
             pass
