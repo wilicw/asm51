@@ -528,6 +528,13 @@ def pass_2nd(optab):
                     ins_err(ins, f_line)
         elif ins == "JNC":
             check_args(ins, args, [1], f_line)
+            offset = 0
+            if (v := sym.normal_word(args[0])) != None:
+                label_addr = int(search_label(v[0], 11), 2)
+                offset = twos_comp(label_addr - LOCCTR - 2)
+            else:
+                ins_err(ins, f_line)
+            write_rom([0x50, offset])
         elif ins == "ANL":
             if args[0] == "A":
                 if (v := sym.internal_R_ram(args[1])) != None:
@@ -592,6 +599,15 @@ def pass_2nd(optab):
                         ins_err(ins, f_line)
                 else:
                     ins_err(ins, f_line)
+        elif ins == "JZ":
+            check_args(ins, args, [1], f_line)
+            offset = 0
+            if (v := sym.normal_word(args[0])) != None:
+                label_addr = int(search_label(v[0], 11), 2)
+                offset = twos_comp(label_addr - LOCCTR - 2)
+            else:
+                ins_err(ins, f_line)
+            write_rom([0x60, offset])
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
