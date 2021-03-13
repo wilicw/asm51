@@ -851,6 +851,16 @@ def pass_2nd(optab):
                 label_process("DJNZ", v[1])
             else:
                 ins_err(ins, f_line)
+        elif ins == "XCHD":
+            check_args(ins, args, [2], f_line)
+            if args[0] == "A":
+                pass
+            else:
+                ins_err(ins, f_line)
+            if (v := sym.internal_R_ram(args[1])) != None:
+                write_rom([0xD6 + int(v[1])])
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
