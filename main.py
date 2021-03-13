@@ -711,6 +711,11 @@ def pass_2nd(optab):
                 write_rom([0x94, int(v[1])])
             else:
                 ins_err(ins, f_line)
+        elif ins == "MUL":
+            if args[0] == "AB":
+                write_rom([0xA3])
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
