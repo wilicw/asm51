@@ -680,12 +680,13 @@ def pass_2nd(optab):
             write_rom([0x80, offset])
         elif ins == "MOVC":
             if args[0] == "A":
-                if args[1] == "@A+DPTR":
-                    write_rom([0x93])
-                elif args[1] == "@A+PC":
-                    write_rom(0x83)
-                else:
-                    ins_err(ins, f_line)
+                pass
+            else:
+                ins_err(ins, f_line)
+            if args[1] == "@A+DPTR":
+                write_rom([0x93])
+            elif args[1] == "@A+PC":
+                write_rom(0x83)
             else:
                 ins_err(ins, f_line)
         elif ins == "SUBB":
