@@ -759,6 +759,16 @@ def pass_2nd(optab):
                 label_process("CJNE", v[1])
             else:
                 ins_err(ins, f_line)
+        elif ins == "PUSH":
+            check_args(ins, args, [1], f_line)
+            if (v := sym.sfr(args[0])) != None:
+                write_rom([0xC0, v])
+            elif (v := sym.hex(args[0])) != None:
+                write_rom([0xC0, int(v[1], 16)])
+            elif (v := sym.dec(args[0])) != None:
+                write_rom([0xC0, int(v[1])])
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
