@@ -124,6 +124,14 @@ SFRs_bit = {
     "B.5": 0xF5,
     "B.6": 0xF6,
     "B.7": 0xF7,
+    "P": 0xD0,
+    "OV": 0xD2,
+    "RS0": 0xD3,
+    "RS1": 0xD4,
+    "F0": 0xD5,
+    "AC": 0xD6,
+    "CY": 0xD7,
+    "C": 0xD7,
 }
 
 
@@ -271,7 +279,7 @@ def pass_2nd(optab):
             check_args(ins, args, [1], f_line)
             if args[0] == "@A+DPTR":
                 write_rom([0x73])
-            elif (v:=sym.normal_word(args[0])) != None:
+            elif (v := sym.normal_word(args[0])) != None:
                 write_rom([0xA5, 0xA5])
                 label_process("JMP", v[0])
             else:
@@ -1050,13 +1058,15 @@ def replace_label():
                 addr16 = search_label(l, 16)
                 if "{:016b}".format(PTR + 2)[:5] == addr16[:5]:
                     addr11 = search_label(l, 11)
-                    ROM[PTR:PTR +2] = [int(addr11[:3] + "00001", 2),
-                              int(addr11[3:], 2)]
+                    ROM[PTR:PTR + 2] = [
+                        int(addr11[:3] + "00001", 2),
+                        int(addr11[3:], 2)
+                    ]
                     PTR += 2
                     T += 1
                 else:
                     for k in SYMTAB.keys():
-                        if SYMTAB[k] > int(addr16,2):
+                        if SYMTAB[k] > int(addr16, 2):
                             SYMTAB[k] += 1
                     addr16 = search_label(l, 16)
                     ROM[PTR:PTR + 3] = [
