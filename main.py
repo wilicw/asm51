@@ -267,7 +267,16 @@ def pass_2nd(optab):
                 label_process("AJMP", v[0])
             else:
                 ins_err(ins, f_line)
-        elif ins == "LJMP" or ins == "JMP":
+        elif ins == "JMP":
+            check_args(ins, args, [1], f_line)
+            if args[0] == "@A+DPTR":
+                write_rom([0x73])
+            elif (v:=sym.normal_word(args[0])) != None:
+                write_rom([0xA5, 0xA5])
+                label_process("JMP", v[0])
+            else:
+                ins_err(ins, f_line)
+        elif ins == "LJMP":
             check_args(ins, args, [1], f_line)
             if (v := sym.normal_word(args[0])) != None:
                 write_rom([0xA5, 0xA5, 0xA5])
@@ -1037,6 +1046,26 @@ def replace_label():
                 ]
                 PTR += 3
                 T += 1
+            elif ins == "JMP":
+                addr16 = search_label(l, 16)
+                if "{:016b}".format(PTR + 2)[:5] == addr16[:5]:
+                    addr11 = search_label(l, 11)
+                    ROM[PTR:PTR +2] = [int(addr11[:3] + "00001", 2),
+                              int(addr11[3:], 2)]
+                    PTR += 2
+                    T += 1
+                else:
+                    for k in SYMTAB.keys():
+                        if SYMTAB[k] > int(addr16,2):
+                            SYMTAB[k] += 1
+                    addr16 = search_label(l, 16)
+                    ROM[PTR:PTR + 3] = [
+                        0x02,
+                        int(addr16[:8], 2),
+                        int(addr16[8:], 2),
+                    ]
+                    PTR += 3
+                    T += 1
             else:
                 PTR += 1
         else:
