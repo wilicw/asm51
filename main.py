@@ -861,6 +861,22 @@ def pass_2nd(optab):
                 write_rom([0xD6 + int(v[1])])
             else:
                 ins_err(ins, f_line)
+        elif ins == "MOVX":
+            check_args(ins, args, [2], f_line)
+            if args[0] == "A":
+                if args[1] == "@DPTR":
+                    write_rom([0xE0])
+                elif (v := sym.internal_R_ram(args[1])) != None:
+                    write_rom([0xE2 + int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            elif (v := sym.internal_R_ram(args[0])) != None:
+                if args[1] == "A":
+                    write_rom([0xF2 + int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
