@@ -1043,12 +1043,38 @@ def replace_label():
             PTR += 1
 
 
+def print_hex():
+    PTR = 0
+    data = []
+    write = False
+    EOF = ":00000001FF"
+    while PTR < len(ROM)-1:
+        if ROM[PTR] != -1:
+            data.append(ROM[PTR])
+        if (ROM[PTR+1] == -1 and len(data) != 0) or len(data) >= 16:
+            line = ":"
+            byte_count = len(data)
+            data_str = "".join(["{:02x}".format(i) for i in data])
+            address = PTR - byte_count+1
+            record_type = 0
+            record = "{:02x}{:04x}{:02x}{}".format(byte_count, address, record_type, data_str)
+            checksum = 0
+            for i in range(0, len(record), 2):
+                checksum += int(record[i:i+2], 16)
+            checksum = 256 - (checksum%256)
+            print(":{}{:02x}".format(record, checksum))
+            data = []
+        PTR += 1
+    print(EOF)
+
+
 def parser(asm_code):
     asm_code = remove_space_comment(asm_code)
     optab = pass_1st(asm_code)
     pass_2nd(optab)
     replace_label()
-    print_ROM()
+    # print_ROM()
+    print_hex()
     exit(0)
 
 
