@@ -132,10 +132,12 @@ class syntax_match():
         self.normal_word = lambda x: re.match(r"^(\w*?)$", x)  # LABEL
         self.hex = lambda x: re.match(r"^([0-9A-F]+?)H$", x)  # EEH
         self.dec = lambda x: re.match(r"^([0-9]+?)$", x)  # 255
-        self.imm_hex = lambda x: re.match(r"^#([0-9A-F]+?)H$", x) # hashtag EEH
+        self.imm_hex = lambda x: re.match(r"^#([0-9A-F]+?)H$", x
+                                          )  # hashtag EEH
         self.imm_dec = lambda x: re.match(r"^#([0-9]+?)$", x)  # hashtag 255
         self.internal_R_ram = lambda x: re.match(r"^@R(\d?)", x)  # @R0
         self.general_reg = lambda x: re.match(r"^R(\d?)", x)  # R7
+        self.inverse_bit = lambda x: re.match(r"^\/(.*?)$", x)  # /P0.0
 
     def sfr_bit(self, x):
         for name in SFRs_bit.keys():
@@ -214,7 +216,7 @@ def remove_space_comment(asm_code):
 
 
 def twos_comp(val):
-    return int("{:08b}".format((-val^0xff)+1),2)
+    return int("{:08b}".format((-val ^ 0xff) + 1), 2)
 
 
 def pass_1st(asm_code):
@@ -304,16 +306,16 @@ def pass_2nd(optab):
             check_args(ins, args, [2], f_line)
             bit_addr = 0
             offset = 0
-            if (v:=sym.sfr_bit(args[0])) != None:
+            if (v := sym.sfr_bit(args[0])) != None:
                 bit_addr = v
-            elif (v:=sym.hex(args[0])) != None:
+            elif (v := sym.hex(args[0])) != None:
                 bit_addr = int(v[0], 16)
-            elif (v:=sym.dec(args[0])) != None:
+            elif (v := sym.dec(args[0])) != None:
                 bit_addr = int(v[0])
             else:
-                ins_err(ins,f_line)
-            if (v:=sym.normal_word(args[1]))!=None:
-                label_addr = int(search_label(v[0] ,11), 2)
+                ins_err(ins, f_line)
+            if (v := sym.normal_word(args[1])) != None:
+                label_addr = int(search_label(v[0], 11), 2)
                 offset = twos_comp(label_addr - LOCCTR - 3)
             else:
                 ins_err(ins, f_line)
@@ -363,16 +365,16 @@ def pass_2nd(optab):
             check_args(ins, args, [2], f_line)
             bit_addr = 0
             offset = 0
-            if (v:=sym.sfr_bit(args[0])) != None:
+            if (v := sym.sfr_bit(args[0])) != None:
                 bit_addr = v
-            elif (v:=sym.hex(args[0])) != None:
+            elif (v := sym.hex(args[0])) != None:
                 bit_addr = int(v[0], 16)
-            elif (v:=sym.dec(args[0])) != None:
+            elif (v := sym.dec(args[0])) != None:
                 bit_addr = int(v[0])
             else:
-                ins_err(ins,f_line)
-            if (v:=sym.normal_word(args[1]))!=None:
-                label_addr = int(search_label(v[0] ,11), 2)
+                ins_err(ins, f_line)
+            if (v := sym.normal_word(args[1])) != None:
+                label_addr = int(search_label(v[0], 11), 2)
                 offset = twos_comp(label_addr - LOCCTR - 3)
             else:
                 ins_err(ins, f_line)
@@ -409,16 +411,16 @@ def pass_2nd(optab):
             check_args(ins, args, [2], f_line)
             bit_addr = 0
             offset = 0
-            if (v:=sym.sfr_bit(args[0])) != None:
+            if (v := sym.sfr_bit(args[0])) != None:
                 bit_addr = v
-            elif (v:=sym.hex(args[0])) != None:
+            elif (v := sym.hex(args[0])) != None:
                 bit_addr = int(v[0], 16)
-            elif (v:=sym.dec(args[0])) != None:
+            elif (v := sym.dec(args[0])) != None:
                 bit_addr = int(v[0])
             else:
-                ins_err(ins,f_line)
-            if (v:=sym.normal_word(args[1]))!=None:
-                label_addr = int(search_label(v[0] ,11), 2)
+                ins_err(ins, f_line)
+            if (v := sym.normal_word(args[1])) != None:
+                label_addr = int(search_label(v[0], 11), 2)
                 offset = twos_comp(label_addr - LOCCTR - 3)
             else:
                 ins_err(ins, f_line)
@@ -454,8 +456,8 @@ def pass_2nd(optab):
         elif ins == "JC":
             check_args(ins, args, [1], f_line)
             offset = 0
-            if (v:=sym.normal_word(args[0]))!=None:
-                label_addr = int(search_label(v[0] ,11), 2)
+            if (v := sym.normal_word(args[0])) != None:
+                label_addr = int(search_label(v[0], 11), 2)
                 offset = twos_comp(label_addr - LOCCTR - 2)
             else:
                 ins_err(ins, f_line)
@@ -478,37 +480,52 @@ def pass_2nd(optab):
                     write_rom([0x44, int(v[1])])
                 else:
                     ins_err(ins, f_line)
-            elif args[1] == "A":
-                if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x42, v])
-                elif (v := sym.hex(args[0])) != None:
-                    write_rom([0x42, int(v[1], 16)])
-                elif (v := sym.dec(args[0])) != None:
-                    write_rom([0x42, int(v[1])])
-                else:
-                    ins_err(ins, f_line)
-            elif (v := sym.imm_hex(args[1])) != None:
-                immediate = int(v[1], 16)
-                if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x43, v, immediate])
-                elif (v := sym.hex(args[0])) != None:
-                    write_rom([0x43, int(v[1], 16), immediate])
-                elif (v := sym.dec(args[0])) != None:
-                    write_rom([0x43, int(v[1]), immediate])
-                else:
-                    ins_err(ins, f_line)
-            elif (v := sym.imm_dec(args[1])) != None:
-                immediate = int(v[1])
-                if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x43, v, immediate])
-                elif (v := sym.hex(args[0])) != None:
-                    write_rom([0x43, int(v[1], 16), immediate])
-                elif (v := sym.dec(args[0])) != None:
-                    write_rom([0x43, int(v[1]), immediate])
+            elif args[0] == "C":
+                bit = args[1]
+                opcode = 0x72
+                if (v := sym.inverse_bit(args[1])) != None:
+                    bit = v[1]
+                    opcode = 0xA0
+                if (v := sym.sfr_bit(bit)) != None:
+                    write_rom([opcode, v])
+                elif (v := sym.hex(bit)) != None:
+                    write_rom([opcode, int(v[1], 16)])
+                elif (v := sym.dec(bit)) != None:
+                    write_rom([opcode, int(v[1])])
                 else:
                     ins_err(ins, f_line)
             else:
-                ins_err(ins, f_line)
+                if args[1] == "A":
+                    if (v := sym.sfr(args[0])) != None:
+                        write_rom([0x42, v])
+                    elif (v := sym.hex(args[0])) != None:
+                        write_rom([0x42, int(v[1], 16)])
+                    elif (v := sym.dec(args[0])) != None:
+                        write_rom([0x42, int(v[1])])
+                    else:
+                        ins_err(ins, f_line)
+                elif (v := sym.imm_hex(args[1])) != None:
+                    immediate = int(v[1], 16)
+                    if (v := sym.sfr(args[0])) != None:
+                        write_rom([0x43, v, immediate])
+                    elif (v := sym.hex(args[0])) != None:
+                        write_rom([0x43, int(v[1], 16), immediate])
+                    elif (v := sym.dec(args[0])) != None:
+                        write_rom([0x43, int(v[1]), immediate])
+                    else:
+                        ins_err(ins, f_line)
+                elif (v := sym.imm_dec(args[1])) != None:
+                    immediate = int(v[1])
+                    if (v := sym.sfr(args[0])) != None:
+                        write_rom([0x43, v, immediate])
+                    elif (v := sym.hex(args[0])) != None:
+                        write_rom([0x43, int(v[1], 16), immediate])
+                    elif (v := sym.dec(args[0])) != None:
+                        write_rom([0x43, int(v[1]), immediate])
+                    else:
+                        ins_err(ins, f_line)
+                else:
+                    ins_err(ins, f_line)
         elif ins == "JNC":
             check_args(ins, args, [1], f_line)
         elif ins == "ANL":
