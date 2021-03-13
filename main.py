@@ -1005,7 +1005,7 @@ def pass_2nd(optab):
             err_line(f"unknown instruction \"{ins}\"", f_line)
 
 
-def replace_label():
+def linker():
     PTR = 0
     T = 0
     while PTR < len(ROM):
@@ -1113,7 +1113,7 @@ def parser(asm_code):
     asm_code = remove_space_comment(asm_code)
     optab = pass_1st(asm_code)
     pass_2nd(optab)
-    replace_label()
+    linker()
     # print_ROM()
     print_hex()
     exit(0)
