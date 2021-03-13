@@ -2,9 +2,10 @@
 import re
 import os
 
-ROM = [0x00] * (2**16)
+ROM = [0xFF] * (2**16)
 LOCCTR = 0
 SYMTAB = {}
+LABELPROCESSTABLE = []
 
 SFRs = {
     "A": 0xE0,
@@ -175,12 +176,17 @@ def ins_err(ins, line):
 
 def search_label(label, bit):
     if label not in SYMTAB.keys():
+        print(label, SYMTAB)
         err(f"label: {label} not found.")
     addr = ("{:0" + str(bit) + "b}").format(SYMTAB[label])
     return addr
 
 
-def mark_label(label):
+def label_process(ins, label):
+    LABELPROCESSTABLE.append({"instruction": ins, "label": label})
+
+
+def insert_label(label):
     if label in SYMTAB.keys():
         err(f"label: {label} already been used.")
     SYMTAB[label] = LOCCTR
@@ -222,35 +228,29 @@ def twos_comp(val):
 
 
 def pass_1st(asm_code):
-    global LOCCTR
     optab = []
     for f_line, ll in asm_code:
         # label
         if (label := sym.label(ll)) != None:
-            mark_label(label[1])
+            optab.append((f_line, "label", label[1], None))
             continue
         # instructions
         instruction = ll.split()
         ins, args = instruction[0], "".join(instruction[1:])
         ins = ins.upper()
         args = args.upper().replace(" ", "").replace("\t", "").split(",")
-        optab.append((f_line, ins, args))
-        if ins == "ORG":
-            check_args(ins, args, [1], f_line)
-            if (v := sym.hex(args[0])) != None:
-                LOCCTR = int(v[1], 16)
-            elif (v := sym.dec(args[0])) != None:
-                LOCCTR = int(v[1])
-            else:
-                ins_err(ins, f_line)
+        optab.append((f_line, "instruction", ins, args))
     return optab
 
 
 def pass_2nd(optab):
     global LOCCTR
     LOCCTR = 0
-    for f_line, ins, args in optab:
-        print(f"I: {ins} {args}")
+    for f_line, ins_type, ins, args in optab:
+        if ins_type == "label":
+            insert_label(ins)
+            continue
+        print(ins, args)
         if ins == "ORG":
             check_args(ins, args, [1], f_line)
             if (v := sym.hex(args[0])) != None:
@@ -264,22 +264,15 @@ def pass_2nd(optab):
         elif ins == "AJMP":
             check_args(ins, args, [1], f_line)
             if (v := sym.normal_word(args[0])) != None:
-                addr11 = search_label(v[0], 11)
-                write_rom([
-                    int(addr11[8:][::-1] + "00001", 2),
-                    int(addr11[0:8][::-1], 2)
-                ])
+                write_rom([0xA5, 0xA5])
+                label_process("AJMP", v[0])
             else:
                 ins_err(ins, f_line)
         elif ins == "LJMP" or ins == "JMP":
             check_args(ins, args, [1], f_line)
             if (v := sym.normal_word(args[0])) != None:
-                addr16 = search_label(v[0], 16)
-                write_rom([
-                    0x02,
-                    int(addr16[8:16][::-1], 2),
-                    int(addr16[0:8][::-1], 2)
-                ])
+                write_rom([0xA5, 0xA5, 0xA5])
+                label_process("LJMP", v[0])
             else:
                 ins_err(ins, f_line)
         elif ins == "RR":
@@ -317,30 +310,23 @@ def pass_2nd(optab):
             else:
                 ins_err(ins, f_line)
             if (v := sym.normal_word(args[1])) != None:
-                label_addr = int(search_label(v[0], 11), 2)
-                offset = twos_comp(label_addr - LOCCTR - 3)
+                offset = 0xA5
+                label_process("JBC", v[0])
             else:
                 ins_err(ins, f_line)
             write_rom([0x10, bit_addr, offset])
         elif ins == "ACALL":
             check_args(ins, args, [1], f_line)
             if (v := sym.normal_word(args[0])) != None:
-                addr11 = search_label(v[0], 11)
-                write_rom([
-                    int(addr11[8:][::-1] + "10001", 2),
-                    int(addr11[0:8][::-1], 2)
-                ])
+                write_rom([0xA5, 0xA5])
+                label_process("ACALL", v[0])
             else:
                 ins_err(ins, f_line)
         elif ins == "LCALL":
             check_args(ins, args, [1], f_line)
             if (v := sym.normal_word(args[0])) != None:
-                addr16 = search_label(v[0], 16)
-                write_rom([
-                    0x12,
-                    int(addr16[8:16][::-1], 2),
-                    int(addr16[0:8][::-1], 2)
-                ])
+                write_rom([0xA5, 0xA5, 0xA5])
+                label_process("LCALL", v[0])
             else:
                 ins_err(ins, f_line)
         elif ins == "RRC":
@@ -376,8 +362,8 @@ def pass_2nd(optab):
             else:
                 ins_err(ins, f_line)
             if (v := sym.normal_word(args[1])) != None:
-                label_addr = int(search_label(v[0], 11), 2)
-                offset = twos_comp(label_addr - LOCCTR - 3)
+                offset = 0xA5
+                label_process("JB", v[0])
             else:
                 ins_err(ins, f_line)
             write_rom([0x20, bit_addr, offset])
@@ -422,8 +408,8 @@ def pass_2nd(optab):
             else:
                 ins_err(ins, f_line)
             if (v := sym.normal_word(args[1])) != None:
-                label_addr = int(search_label(v[0], 11), 2)
-                offset = twos_comp(label_addr - LOCCTR - 3)
+                offset = 0xA5
+                label_process("JNB", v[0])
             else:
                 ins_err(ins, f_line)
             write_rom([0x30, bit_addr, offset])
@@ -459,8 +445,8 @@ def pass_2nd(optab):
             check_args(ins, args, [1], f_line)
             offset = 0
             if (v := sym.normal_word(args[0])) != None:
-                label_addr = int(search_label(v[0], 11), 2)
-                offset = twos_comp(label_addr - LOCCTR - 2)
+                offset = 0xA5
+                label_process("JC", v[0])
             else:
                 ins_err(ins, f_line)
             write_rom([0x40, offset])
@@ -532,8 +518,8 @@ def pass_2nd(optab):
             check_args(ins, args, [1], f_line)
             offset = 0
             if (v := sym.normal_word(args[0])) != None:
-                label_addr = int(search_label(v[0], 11), 2)
-                offset = twos_comp(label_addr - LOCCTR - 2)
+                offset = 0xA5
+                label_process("JNC", v[0])
             else:
                 ins_err(ins, f_line)
             write_rom([0x50, offset])
@@ -605,8 +591,8 @@ def pass_2nd(optab):
             check_args(ins, args, [1], f_line)
             offset = 0
             if (v := sym.normal_word(args[0])) != None:
-                label_addr = int(search_label(v[0], 11), 2)
-                offset = twos_comp(label_addr - LOCCTR - 2)
+                offset = 0xA5
+                label_process("JZ", v[0])
             else:
                 ins_err(ins, f_line)
             write_rom([0x60, offset])
@@ -664,8 +650,8 @@ def pass_2nd(optab):
             check_args(ins, args, [1], f_line)
             offset = 0
             if (v := sym.normal_word(args[0])) != None:
-                label_addr = int(search_label(v[0], 11), 2)
-                offset = twos_comp(label_addr - LOCCTR - 2)
+                offset = 0xA5
+                label_process("JNZ", v[0])
             else:
                 ins_err(ins, f_line)
             write_rom([0x70, offset])
@@ -673,8 +659,8 @@ def pass_2nd(optab):
             check_args(ins, args, [1], f_line)
             offset = 0
             if (v := sym.normal_word(args[0])) != None:
-                label_addr = int(search_label(v[0], 11), 2)
-                offset = twos_comp(label_addr - LOCCTR - 2)
+                offset = 0xA5
+                label_process("SJMP", v[0])
             else:
                 ins_err(ins, f_line)
             write_rom([0x80, offset])
@@ -741,10 +727,65 @@ def pass_2nd(optab):
             # err_line(f"unknown instruction \"{ins}\"", f_line)
 
 
+def replace_label():
+    PTR = 0
+    T = 0
+    while PTR < len(ROM):
+        if ROM[PTR] == 0xA5:
+            now = LABELPROCESSTABLE[T]
+            ins = now["instruction"]
+            l = now["label"]
+            if ins in ["JB", "JNB", "JBC"]:
+                label_addr = int(search_label(l, 11), 2)
+                offset = twos_comp(label_addr - PTR)
+                ROM[PTR] = offset
+                PTR += 1
+            elif ins in ["JC", "JNC", "JZ", "JNZ", "SJMP"]:
+                label_addr = int(search_label(l, 11), 2)
+                offset = twos_comp(label_addr - PTR - 1)
+                ROM[PTR] = offset
+                PTR += 1
+            elif ins == "AJMP":
+                addr11 = search_label(l, 11)
+                ROM[PTR:PTR + 2] = [
+                    int(addr11[8:][::-1] + "00001", 2),
+                    int(addr11[0:8][::-1], 2)
+                ]
+                PTR += 2
+            elif ins == "ACALL":
+                addr11 = search_label(l, 11)
+                ROM[PTR:PTR + 2] = [
+                    int(addr11[8:][::-1] + "10001", 2),
+                    int(addr11[0:8][::-1], 2)
+                ]
+                PTR += 2
+            elif ins == "LJMP":
+                addr16 = search_label(l, 16)
+                ROM[PTR:PTR + 3] = [
+                    0x02,
+                    int(addr16[8:16][::-1], 2),
+                    int(addr16[0:8][::-1], 2)
+                ]
+                PTR += 3
+            elif ins == "LCALL":
+                addr16 = search_label(l, 16)
+                ROM[PTR:PTR + 3] = [
+                    0x12,
+                    int(addr16[8:16][::-1], 2),
+                    int(addr16[0:8][::-1], 2)
+                ]
+                PTR += 3
+            else:
+                PTR += 1
+        else:
+            PTR += 1
+
+
 def parser(asm_code):
     asm_code = remove_space_comment(asm_code)
     optab = pass_1st(asm_code)
     pass_2nd(optab)
+    replace_label()
     print_ROM()
     exit(0)
 

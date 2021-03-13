@@ -1,6 +1,6 @@
   ORG   0000H
   AJMP  MAIN
-  ORG   0050H
+  ORG   50H
 
 MAIN:
   INC   A
