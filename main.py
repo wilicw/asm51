@@ -689,6 +689,11 @@ def pass_2nd(optab):
                 write_rom(0x83)
             else:
                 ins_err(ins, f_line)
+        elif ins == "DIV":
+            if args[0] == "AB":
+                write_rom([0x84])
+            else:
+                ins_err(ins, f_line)
         elif ins == "SUBB":
             check_args(ins, args, [2], f_line)
             if args[0] == "A":
