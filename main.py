@@ -546,37 +546,52 @@ def pass_2nd(optab):
                     write_rom([0x54, int(v[1])])
                 else:
                     ins_err(ins, f_line)
-            elif args[1] == "A":
-                if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x52, v])
-                elif (v := sym.hex(args[0])) != None:
-                    write_rom([0x52, int(v[1], 16)])
-                elif (v := sym.dec(args[0])) != None:
-                    write_rom([0x52, int(v[1])])
-                else:
-                    ins_err(ins, f_line)
-            elif (v := sym.imm_hex(args[1])) != None:
-                immediate = int(v[1], 16)
-                if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x53, v, immediate])
-                elif (v := sym.hex(args[0])) != None:
-                    write_rom([0x53, int(v[1], 16), immediate])
-                elif (v := sym.dec(args[0])) != None:
-                    write_rom([0x53, int(v[1]), immediate])
-                else:
-                    ins_err(ins, f_line)
-            elif (v := sym.imm_dec(args[1])) != None:
-                immediate = int(v[1])
-                if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x53, v, immediate])
-                elif (v := sym.hex(args[0])) != None:
-                    write_rom([0x53, int(v[1], 16), immediate])
-                elif (v := sym.dec(args[0])) != None:
-                    write_rom([0x53, int(v[1]), immediate])
+            elif args[0] == "C":
+                bit = args[1]
+                opcode = 0x82
+                if (v := sym.inverse_bit(args[1])) != None:
+                    bit = v[1]
+                    opcode = 0xB0
+                if (v := sym.sfr_bit(bit)) != None:
+                    write_rom([opcode, v])
+                elif (v := sym.hex(bit)) != None:
+                    write_rom([opcode, int(v[1], 16)])
+                elif (v := sym.dec(bit)) != None:
+                    write_rom([opcode, int(v[1])])
                 else:
                     ins_err(ins, f_line)
             else:
-                ins_err(ins, f_line)
+                if args[1] == "A":
+                    if (v := sym.sfr(args[0])) != None:
+                        write_rom([0x52, v])
+                    elif (v := sym.hex(args[0])) != None:
+                        write_rom([0x52, int(v[1], 16)])
+                    elif (v := sym.dec(args[0])) != None:
+                        write_rom([0x52, int(v[1])])
+                    else:
+                        ins_err(ins, f_line)
+                elif (v := sym.imm_hex(args[1])) != None:
+                    immediate = int(v[1], 16)
+                    if (v := sym.sfr(args[0])) != None:
+                        write_rom([0x53, v, immediate])
+                    elif (v := sym.hex(args[0])) != None:
+                        write_rom([0x53, int(v[1], 16), immediate])
+                    elif (v := sym.dec(args[0])) != None:
+                        write_rom([0x53, int(v[1]), immediate])
+                    else:
+                        ins_err(ins, f_line)
+                elif (v := sym.imm_dec(args[1])) != None:
+                    immediate = int(v[1])
+                    if (v := sym.sfr(args[0])) != None:
+                        write_rom([0x53, v, immediate])
+                    elif (v := sym.hex(args[0])) != None:
+                        write_rom([0x53, int(v[1], 16), immediate])
+                    elif (v := sym.dec(args[0])) != None:
+                        write_rom([0x53, int(v[1]), immediate])
+                    else:
+                        ins_err(ins, f_line)
+                else:
+                    ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
