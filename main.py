@@ -453,6 +453,13 @@ def pass_2nd(optab):
                 ins_err(ins, f_line)
         elif ins == "JC":
             check_args(ins, args, [1], f_line)
+            offset = 0
+            if (v:=sym.normal_word(args[0]))!=None:
+                label_addr = int(search_label(v[0] ,11), 2)
+                offset = twos_comp(label_addr - LOCCTR - 2)
+            else:
+                ins_err(ins, f_line)
+            write_rom([0x40, offset])
         elif ins == "ORL":
             if args[0] == "A":
                 if (v := sym.internal_R_ram(args[1])) != None:
