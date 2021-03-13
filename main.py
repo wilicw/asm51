@@ -246,6 +246,7 @@ def pass_2nd(optab):
     global LOCCTR
     LOCCTR = 0
     for f_line, ins_type, ins, args in optab:
+        # print(ins, args)
         if ins_type == "label":
             insert_label(ins)
             continue
@@ -981,6 +982,8 @@ def pass_2nd(optab):
                     ins_err(ins, f_line)
             else:
                 ins_err(ins, f_line)
+        elif ins == "END":
+            break
         else:
             err_line(f"unknown instruction \"{ins}\"", f_line)
 
