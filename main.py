@@ -817,6 +817,18 @@ def pass_2nd(optab):
                 write_rom([0xD0, int(v[1])])
             else:
                 ins_err(ins, f_line)
+        elif ins == "SETB":
+            check_args(ins, args, [1], f_line)
+            if args[0] == "C":
+                write_rom([0xD3])
+            elif (v := sym.hex(args[0])) != None:
+                write_rom([0xD2, int(v[1], 16)])
+            elif (v := sym.dec(args[0])) != None:
+                write_rom([0xD2, int(v[1])])
+            elif (v := sym.sfr_bit(args[0])) != None:
+                write_rom([0xD2, v])
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
