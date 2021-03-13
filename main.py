@@ -3,8 +3,8 @@ import re
 import os
 
 ROM = [0x00] * (2**16)
-PTR = 0
-label_dict = {}
+LOCCTR = 0
+SYMTAB = {}
 
 SFRs = {
     "A": 0xE0,
@@ -173,24 +173,24 @@ def ins_err(ins, line):
 
 
 def search_label(label, bit):
-    if label not in label_dict.keys():
+    if label not in SYMTAB.keys():
         err(f"label: {label} not found.")
-    addr = ("{:0" + str(bit) + "b}").format(label_dict[label])
+    addr = ("{:0" + str(bit) + "b}").format(SYMTAB[label])
     return addr
 
 
 def mark_label(label):
-    if label in label_dict.keys():
+    if label in SYMTAB.keys():
         err(f"label: {label} already been used.")
-    label_dict[label] = PTR
+    SYMTAB[label] = LOCCTR
 
 
 def write_rom(opcodes):
-    global PTR
+    global LOCCTR
     global ROM
     for o in opcodes:
-        ROM[PTR] = o
-        PTR += 1
+        ROM[LOCCTR] = o
+        LOCCTR += 1
 
 
 def check_args(ins, args, num, f_line):
@@ -214,8 +214,9 @@ def remove_space_comment(asm_code):
     return clean_asm
 
 
-def create_label(asm_code):
-    global PTR
+def pass_1st(asm_code):
+    global LOCCTR
+    optab = []
     for f_line, ll in asm_code:
         # label
         label = re.match(r"^(\w*?):", ll)
@@ -228,34 +229,29 @@ def create_label(asm_code):
         ins, args = instruction[0], "".join(instruction[1:])
         ins = ins.upper()
         args = args.upper().replace(" ", "").replace("\t", "").split(",")
+        optab.append((f_line, ins, args))
         if ins == "ORG":
             check_args(ins, args, [1], f_line)
             if (v := sym.hex(args[0])) != None:
-                PTR = int(v[1], 16)
+                LOCCTR = int(v[1], 16)
             elif (v := sym.dec(args[0])) != None:
-                PTR = int(v[1])
+                LOCCTR = int(v[1])
             else:
                 ins_err(ins, f_line)
+    return optab
 
 
-def parser(asm_code):
-    global PTR
-    asm_code = remove_space_comment(asm_code)
-    create_label(asm_code)
-    PTR = 0
-    for f_line, ll in asm_code:
-        # instructions
-        instruction = ll.split()
-        ins, args = instruction[0], "".join(instruction[1:])
-        ins = ins.upper()
-        args = args.upper().replace(" ", "").replace("\t", "").split(",")
+def pass_2nd(optab):
+    global LOCCTR
+    LOCCTR = 0
+    for f_line, ins, args in optab:
         print(f"I: {ins} {args}")
         if ins == "ORG":
             check_args(ins, args, [1], f_line)
             if (v := sym.hex(args[0])) != None:
-                PTR = int(v[1], 16)
+                LOCCTR = int(v[1], 16)
             elif (v := sym.dec(args[0])) != None:
-                PTR = int(v[1])
+                LOCCTR = int(v[1])
             else:
                 ins_err(ins, f_line)
         elif ins == "NOP":
@@ -289,7 +285,7 @@ def parser(asm_code):
             check_args(ins, args, [1], f_line)
             if args[0] == "A":
                 write_rom([0x04])
-            elif args[0] == "DPTR":
+            elif args[0] == "DLOCCTR":
                 write_rom([0xA3])
             elif (v := sym.internal_R_ram(args[0])) != None:
                 write_rom([0x06 + int(v[1])])
@@ -511,6 +507,12 @@ def parser(asm_code):
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
+
+
+def parser(asm_code):
+    asm_code = remove_space_comment(asm_code)
+    optab = pass_1st(asm_code)
+    pass_2nd(optab)
     print_ROM()
     exit(0)
 
