@@ -361,6 +361,22 @@ def pass_2nd(optab):
                 ins_err(ins, f_line)
         elif ins == "JB":
             check_args(ins, args, [2], f_line)
+            bit_addr = 0
+            offset = 0
+            if (v:=sym.sfr_bit(args[0])) != None:
+                bit_addr = v
+            elif (v:=sym.hex(args[0])) != None:
+                bit_addr = int(v[0], 16)
+            elif (v:=sym.dec(args[0])) != None:
+                bit_addr = int(v[0])
+            else:
+                ins_err(ins,f_line)
+            if (v:=sym.normal_word(args[1]))!=None:
+                label_addr = int(search_label(v[0] ,11), 2)
+                offset = twos_comp(label_addr - LOCCTR - 3)
+            else:
+                ins_err(ins, f_line)
+            write_rom([0x20, bit_addr, offset])
         elif ins == "RET":
             write_rom([0x22])
         elif ins == "RL":
