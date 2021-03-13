@@ -138,18 +138,20 @@ class syntax_match():
         self.internal_R_ram = lambda x: re.match(r"^@R(\d?)", x)  # @R0
         self.general_reg = lambda x: re.match(r"^R(\d?)", x)  # R7
 
+    def sfr_bit(self, x):
+        for name in SFRs_bit.keys():
+            if x == name:
+                return SFRs_bit[x]
+        return None
+
     def sfr(self, x):
         for name in SFRs.keys():
             if x == name:
-                return x
+                return SFRs[x]
         return None
 
 
 sym = syntax_match()
-
-
-def sfr_hex(name):
-    return SFRs[name]
 
 
 def help():
@@ -294,7 +296,7 @@ def parser(asm_code):
             elif (v := sym.general_reg(args[0])) != None:
                 write_rom([0x08 + int(v[1])])
             elif (v := sym.sfr(args[0])) != None:
-                write_rom([0x05, sfr_hex(v)])
+                write_rom([0x05, v])
             elif (v := sym.hex(args[0])) != None:
                 write_rom([0x05, int(v[1], 16)])
             elif (v := sym.dec(args[0])) != None:
@@ -337,7 +339,7 @@ def parser(asm_code):
             elif (v := sym.general_reg(args[0])) != None:
                 write_rom([0x18 + int(v[1])])
             elif (v := sym.sfr(args[0])) != None:
-                write_rom([0x15, sfr_hex(v)])
+                write_rom([0x15, v])
             elif (v := sym.hex(args[0])) != None:
                 write_rom([0x15, int(v[1], 16)])
             elif (v := sym.dec(args[0])) != None:
@@ -363,7 +365,7 @@ def parser(asm_code):
             elif (v := sym.general_reg(args[1])) != None:
                 write_rom([0x28 + int(v[1])])
             elif (v := sym.sfr(args[1])) != None:
-                write_rom([0x25, sfr_hex(v)])
+                write_rom([0x25, v])
             elif (v := sym.hex(args[1])) != None:
                 write_rom([0x25, int(v[1], 16)])
             elif (v := sym.dec(args[1])) != None:
@@ -393,7 +395,7 @@ def parser(asm_code):
             elif (v := sym.general_reg(args[1])) != None:
                 write_rom([0x38 + int(v[1])])
             elif (v := sym.sfr(args[1])) != None:
-                write_rom([0x35, sfr_hex(v)])
+                write_rom([0x35, v])
             elif (v := sym.hex(args[1])) != None:
                 write_rom([0x35, int(v[1], 16)])
             elif (v := sym.dec(args[1])) != None:
@@ -413,7 +415,7 @@ def parser(asm_code):
                 elif (v := sym.general_reg(args[1])) != None:
                     write_rom([0x48 + int(v[1])])
                 elif (v := sym.sfr(args[1])) != None:
-                    write_rom([0x45, sfr_hex(v)])
+                    write_rom([0x45, v])
                 elif (v := sym.hex(args[1])) != None:
                     write_rom([0x45, int(v[1], 16)])
                 elif (v := sym.dec(args[1])) != None:
@@ -426,7 +428,7 @@ def parser(asm_code):
                     ins_err(ins, f_line)
             elif args[1] == "A":
                 if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x42, sfr_hex(v)])
+                    write_rom([0x42, v])
                 elif (v := sym.hex(args[0])) != None:
                     write_rom([0x42, int(v[1], 16)])
                 elif (v := sym.dec(args[0])) != None:
@@ -436,7 +438,7 @@ def parser(asm_code):
             elif (v := sym.imm_hex(args[1])) != None:
                 immediate = int(v[1], 16)
                 if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x43, sfr_hex(v), immediate])
+                    write_rom([0x43, v, immediate])
                 elif (v := sym.hex(args[0])) != None:
                     write_rom([0x43, int(v[1], 16), immediate])
                 elif (v := sym.dec(args[0])) != None:
@@ -446,7 +448,7 @@ def parser(asm_code):
             elif (v := sym.imm_dec(args[1])) != None:
                 immediate = int(v[1])
                 if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x43, sfr_hex(v), immediate])
+                    write_rom([0x43, v, immediate])
                 elif (v := sym.hex(args[0])) != None:
                     write_rom([0x43, int(v[1], 16), immediate])
                 elif (v := sym.dec(args[0])) != None:
@@ -464,7 +466,7 @@ def parser(asm_code):
                 elif (v := sym.general_reg(args[1])) != None:
                     write_rom([0x58 + int(v[1])])
                 elif (v := sym.sfr(args[1])) != None:
-                    write_rom([0x55, sfr_hex(v)])
+                    write_rom([0x55, v])
                 elif (v := sym.hex(args[1])) != None:
                     write_rom([0x55, int(v[1], 16)])
                 elif (v := sym.dec(args[1])) != None:
@@ -477,7 +479,7 @@ def parser(asm_code):
                     ins_err(ins, f_line)
             elif args[1] == "A":
                 if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x52, sfr_hex(v)])
+                    write_rom([0x52, v])
                 elif (v := sym.hex(args[0])) != None:
                     write_rom([0x52, int(v[1], 16)])
                 elif (v := sym.dec(args[0])) != None:
@@ -487,7 +489,7 @@ def parser(asm_code):
             elif (v := sym.imm_hex(args[1])) != None:
                 immediate = int(v[1], 16)
                 if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x53, sfr_hex(v), immediate])
+                    write_rom([0x53, v, immediate])
                 elif (v := sym.hex(args[0])) != None:
                     write_rom([0x53, int(v[1], 16), immediate])
                 elif (v := sym.dec(args[0])) != None:
@@ -497,7 +499,7 @@ def parser(asm_code):
             elif (v := sym.imm_dec(args[1])) != None:
                 immediate = int(v[1])
                 if (v := sym.sfr(args[0])) != None:
-                    write_rom([0x53, sfr_hex(v), immediate])
+                    write_rom([0x53, v, immediate])
                 elif (v := sym.hex(args[0])) != None:
                     write_rom([0x53, int(v[1], 16), immediate])
                 elif (v := sym.dec(args[0])) != None:
