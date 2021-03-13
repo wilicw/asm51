@@ -996,13 +996,10 @@ def replace_label():
             now = LABELPROCESSTABLE[T]
             ins = now["instruction"]
             l = now["label"]
-            if ins in ["JB", "JNB", "JBC"]:
-                label_addr = int(search_label(l, 11), 2)
-                offset = twos_comp(label_addr - PTR)
-                ROM[PTR] = offset
-                PTR += 1
-                T += 1
-            elif ins in ["JC", "JNC", "JZ", "JNZ", "SJMP", "CJNE", "DJNZ"]:
+            if ins in [
+                    "JB", "JNB", "JBC", "JC", "JNC", "JZ", "JNZ", "SJMP",
+                    "CJNE", "DJNZ"
+            ]:
                 label_addr = int(search_label(l, 11), 2)
                 offset = twos_comp(label_addr - PTR - 1)
                 ROM[PTR] = offset
@@ -1051,20 +1048,21 @@ def print_hex():
     data = []
     write = False
     EOF = ":00000001FF"
-    while PTR < len(ROM)-1:
+    while PTR < len(ROM) - 1:
         if ROM[PTR] != -1:
             data.append(ROM[PTR])
-        if (ROM[PTR+1] == -1 and len(data) != 0) or len(data) >= 16:
+        if (ROM[PTR + 1] == -1 and len(data) != 0) or len(data) >= 16:
             line = ":"
             byte_count = len(data)
             data_str = "".join(["{:02x}".format(i) for i in data])
-            address = PTR - byte_count+1
+            address = PTR - byte_count + 1
             record_type = 0
-            record = "{:02x}{:04x}{:02x}{}".format(byte_count, address, record_type, data_str)
+            record = "{:02x}{:04x}{:02x}{}".format(byte_count, address,
+                                                   record_type, data_str)
             checksum = 0
             for i in range(0, len(record), 2):
-                checksum += int(record[i:i+2], 16)
-            checksum = 256 - (checksum%256)
+                checksum += int(record[i:i + 2], 16)
+            checksum = 256 - (checksum % 256)
             print(":{}{:02x}".format(record, checksum))
             data = []
         PTR += 1
