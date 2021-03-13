@@ -2,7 +2,7 @@
 import re
 import os
 
-ROM = [0xFF] * (2**16)
+ROM = [-1] * (2**16)
 LOCCTR = 0
 SYMTAB = {}
 LABELPROCESSTABLE = []
@@ -176,7 +176,6 @@ def ins_err(ins, line):
 
 def search_label(label, bit):
     if label not in SYMTAB.keys():
-        print(label, SYMTAB)
         err(f"label: {label} not found.")
     addr = ("{:0" + str(bit) + "b}").format(SYMTAB[label])
     return addr
@@ -195,7 +194,6 @@ def insert_label(label):
 def write_rom(opcodes):
     global LOCCTR
     global ROM
-    print(" ".join([hex(i) for i in opcodes]))
     for o in opcodes:
         ROM[LOCCTR] = o
         LOCCTR += 1
@@ -251,7 +249,6 @@ def pass_2nd(optab):
         if ins_type == "label":
             insert_label(ins)
             continue
-        print(ins, args)
         if ins == "ORG":
             check_args(ins, args, [1], f_line)
             if (v := sym.hex(args[0])) != None:
