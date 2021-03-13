@@ -835,6 +835,22 @@ def pass_2nd(optab):
                 write_rom([0xD4])
             else:
                 ins_err(ins, f_line)
+        elif ins == "DJNZ":
+            check_args(ins, args, [2], f_line)
+            if (v := sym.sfr(args[0])) != None:
+                write_rom([0xD5, v, 0xA5])
+            elif (v := sym.hex(args[0])) != None:
+                write_rom([0xD5, int(v[1], 16), 0xA5])
+            elif (v := sym.dec(args[0])) != None:
+                write_rom([0xD5, int(v[1]), 0xA5])
+            elif (v := sym.general_reg(args[0])) != None:
+                write_rom([0xD8 + int(v[1]), 0xA5])
+            else:
+                ins_err(ins, f_line)
+            if (v := sym.normal_word(args[1])) != None:
+                label_process("DJNZ", v[1])
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
@@ -854,7 +870,7 @@ def replace_label():
                 ROM[PTR] = offset
                 PTR += 1
                 T += 1
-            elif ins in ["JC", "JNC", "JZ", "JNZ", "SJMP", "CJNE"]:
+            elif ins in ["JC", "JNC", "JZ", "JNZ", "SJMP", "CJNE", "DJNZ"]:
                 label_addr = int(search_label(l, 11), 2)
                 offset = twos_comp(label_addr - PTR - 1)
                 ROM[PTR] = offset
