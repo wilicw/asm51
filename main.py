@@ -195,6 +195,7 @@ def insert_label(label):
 def write_rom(opcodes):
     global LOCCTR
     global ROM
+    print(" ".join([hex(i) for i in opcodes]))
     for o in opcodes:
         ROM[LOCCTR] = o
         LOCCTR += 1
@@ -646,6 +647,112 @@ def pass_2nd(optab):
                         ins_err(ins, f_line)
                 else:
                     ins_err(ins, f_line)
+        elif ins == "MOV":
+            check_args(ins, args, [2], f_line)
+            if (v := sym.internal_R_ram(args[0])) != None:
+                Ri = int(v[1])
+                if args[1] == "A":
+                    write_rom([0xF6 + Ri])
+                elif (v := sym.imm_hex(args[1])) != None:
+                    write_rom([0x76 + Ri, int(v[1], 16)])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([0x76 + Ri, int(v[1])])
+                elif (v := sym.sfr(args[1])) != None:
+                    write_rom([0xA6 + Ri, v])
+                elif (v := sym.hex(args[1])) != None:
+                    write_rom([0xA6 + Ri, int(v[1], 16)])
+                elif (v := sym.dec(args[1])) != None:
+                    write_rom([0xA6 + Ri, int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            elif args[0] == "A":
+                if (v := sym.internal_R_ram(args[1])) != None:
+                    write_rom([0xE6 + int(v[1])])
+                elif (v := sym.general_reg(args[1])) != None:
+                    write_rom([0xE8 + int(v[1])])
+                elif (v := sym.imm_hex(args[1])) != None:
+                    write_rom([0x74, int(v[1], 16)])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([0x74, int(v[1])])
+                elif (v := sym.sfr(args[1])) != None:
+                    write_rom([0xE5, v])
+                elif (v := sym.hex(args[1])) != None:
+                    write_rom([0xE5, int(v[1], 16)])
+                elif (v := sym.dec(args[1])) != None:
+                    write_rom([0xE5, int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            elif args[0] == "C":
+                if (v := sym.hex(args[1])) != None:
+                    write_rom([0xA2, int(v[1], 16)])
+                elif (v := sym.dec(args[1])) != None:
+                    write_rom([0xA2, int(v[1])])
+                elif (v := sym.sfr_bit(args[1])) != None:
+                    write_rom([0xA2, v])
+                else:
+                    ins_err(ins, f_line)
+            elif args[1] == "C":
+                if (v := sym.hex(args[0])) != None:
+                    write_rom([0x92, int(v[1], 16)])
+                elif (v := sym.dec(args[0])) != None:
+                    write_rom([0x92, int(v[1])])
+                elif (v := sym.sfr_bit(args[0])) != None:
+                    write_rom([0x92, v])
+                else:
+                    ins_err(ins, f_line)
+            elif args[0] == "DPTR":
+                if (v := sym.imm_hex(args[1])) != None:
+                    imm_val = int(v[1], 16)
+                    write_rom([0x90, imm_val // 256, imm_val % 256])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    imm_val = int(v[1])
+                    write_rom([0x90, imm_val // 256, imm_val % 256])
+                else:
+                    ins_err(ins, f_line)
+            elif (v := sym.general_reg(args[0])) != None:
+                Rn = int(v[1])
+                if args[1] == "A":
+                    write_rom([0xF8 + Rn])
+                elif (v := sym.imm_hex(args[1])) != None:
+                    write_rom([0x78 + Rn, int(v[1], 16)])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([0x78 + Rn, int(v[1])])
+                elif (v := sym.sfr(args[1])) != None:
+                    write_rom([0xA8 + Rn, v])
+                elif (v := sym.hex(args[1])) != None:
+                    write_rom([0xA8 + Rn, int(v[1], 16)])
+                elif (v := sym.dec(args[1])) != None:
+                    write_rom([0xA8 + Rn, int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            else:
+                val = -1
+                if (v := sym.sfr(args[0])) != None:
+                    val = int(v)
+                elif (v := sym.hex(args[0])) != None:
+                    val = int(v[1], 16)
+                elif (v := sym.dec(args[0])) != None:
+                    val = int(v[1])
+                else:
+                    ins_err(ins, f_line)
+                if args[1] == "A":
+                    write_rom([0xF5, val])
+                elif (v := sym.imm_hex(args[1])) != None:
+                    write_rom([0x75, val, int(v[1], 16)])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([0x75, val, int(v[1])])
+                elif (v := sym.sfr(args[1])) != None:
+                    write_rom([0x85, v, val])
+                elif (v := sym.hex(args[1])) != None:
+                    write_rom([0x85, int(v[1], 16), val])
+                elif (v := sym.dec(args[1])) != None:
+                    write_rom([0x85, int(v[1]), val])
+                elif (v := sym.general_reg(args[1])) != None:
+                    write_rom([0x88 + int(v[1]), val])
+                elif (v := sym.internal_R_ram(args[1])) != None:
+                    write_rom([0x86 + int(v[1]), val])
+                else:
+                    ins_err(ins, f_line)
         elif ins == "JNZ":
             check_args(ins, args, [1], f_line)
             offset = 0
@@ -878,8 +985,7 @@ def pass_2nd(optab):
             else:
                 ins_err(ins, f_line)
         else:
-            pass
-            # err_line(f"unknown instruction \"{ins}\"", f_line)
+            err_line(f"unknown instruction \"{ins}\"", f_line)
 
 
 def replace_label():
@@ -904,26 +1010,24 @@ def replace_label():
                 T += 1
             elif ins == "AJMP":
                 addr11 = search_label(l, 11)
-                ROM[PTR:PTR + 2] = [
-                    int(addr11[8:][::-1] + "00001", 2),
-                    int(addr11[0:8][::-1], 2)
-                ]
+                ROM[PTR:PTR +
+                    2] = [int(addr11[:3] + "00001", 2),
+                          int(addr11[3:], 2)]
                 PTR += 2
                 T += 1
             elif ins == "ACALL":
                 addr11 = search_label(l, 11)
-                ROM[PTR:PTR + 2] = [
-                    int(addr11[8:][::-1] + "10001", 2),
-                    int(addr11[0:8][::-1], 2)
-                ]
+                ROM[PTR:PTR +
+                    2] = [int(addr11[:3] + "10001", 2),
+                          int(addr11[3:], 2)]
                 PTR += 2
                 T += 1
             elif ins == "LJMP":
                 addr16 = search_label(l, 16)
                 ROM[PTR:PTR + 3] = [
                     0x02,
-                    int(addr16[8:16][::-1], 2),
-                    int(addr16[0:8][::-1], 2)
+                    int(addr16[:8], 2),
+                    int(addr16[8:], 2),
                 ]
                 PTR += 3
                 T += 1
@@ -931,8 +1035,8 @@ def replace_label():
                 addr16 = search_label(l, 16)
                 ROM[PTR:PTR + 3] = [
                     0x12,
-                    int(addr16[8:16][::-1], 2),
-                    int(addr16[0:8][::-1], 2)
+                    int(addr16[:8], 2),
+                    int(addr16[8:], 2),
                 ]
                 PTR += 3
                 T += 1
