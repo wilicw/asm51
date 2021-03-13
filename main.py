@@ -361,6 +361,55 @@ def parser(asm_code):
                 ins_err(ins, f_line)
         elif ins == "JNC":
             check_args(ins, args, [1], f_line)
+        elif ins == "ANL":
+            if args[0] == "A":
+                if (v := sym.internal_R_ram(args[1])) != None:
+                    write_rom([0x56 + int(v[1])])
+                elif (v := sym.general_reg(args[1])) != None:
+                    write_rom([0x58 + int(v[1])])
+                elif (v := sym.sfr(args[1])) != None:
+                    write_rom([0x55, sfr_hex(v)])
+                elif (v := sym.hex(args[1])) != None:
+                    write_rom([0x55, int(v[1], 16)])
+                elif (v := sym.dec(args[1])) != None:
+                    write_rom([0x55, int(v[1])])
+                elif (v := sym.imm_hex(args[1])) != None:
+                    write_rom([0x54, int(v[1], 16)])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([0x54, int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            elif args[1] == "A":
+                if (v := sym.sfr(args[0])) != None:
+                    write_rom([0x52, sfr_hex(v)])
+                elif (v := sym.hex(args[0])) != None:
+                    write_rom([0x52, int(v[1], 16)])
+                elif (v := sym.dec(args[0])) != None:
+                    write_rom([0x52, int(v[1])])
+                else:
+                    ins_err(ins, f_line)
+            elif (v:= sym.imm_hex(args[1]))!=None:
+                immediate = int(v[1], 16)
+                if (v := sym.sfr(args[0])) != None:
+                    write_rom([0x53, sfr_hex(v), immediate])
+                elif (v := sym.hex(args[0])) != None:
+                    write_rom([0x53, int(v[1], 16), immediate])
+                elif (v := sym.dec(args[0])) != None:
+                    write_rom([0x53, int(v[1]), immediate])
+                else:
+                    ins_err(ins, f_line)
+            elif (v:= sym.imm_dec(args[1]))!=None:
+                immediate = int(v[1])
+                if (v := sym.sfr(args[0])) != None:
+                    write_rom([0x53, sfr_hex(v), immediate])
+                elif (v := sym.hex(args[0])) != None:
+                    write_rom([0x53, int(v[1], 16), immediate])
+                elif (v := sym.dec(args[0])) != None:
+                    write_rom([0x53, int(v[1]), immediate])
+                else:
+                    ins_err(ins, f_line)
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
