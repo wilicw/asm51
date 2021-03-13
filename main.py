@@ -712,16 +712,53 @@ def pass_2nd(optab):
             if args[0] == "A":
                 write_rom([0xF4])
             elif args[0] == "C":
-                write_rom([0xC3])
+                write_rom([0xB3])
             else:
                 if (v := sym.sfr_bit(args[1])) != None:
-                    write_rom([0xC2 + v])
+                    write_rom([0xB2 + v])
                 elif (v := sym.hex(args[1])) != None:
-                    write_rom([0xC2, int(v[1], 16)])
+                    write_rom([0xB2, int(v[1], 16)])
                 elif (v := sym.dec(args[1])) != None:
-                    write_rom([0xC2, int(v[1])])
+                    write_rom([0xB2, int(v[1])])
                 else:
                     ins_err(ins, f_line)
+        elif ins == "CJNE":
+            check_args(ins, args, [3], f_line)
+            if args[0] == "A":
+                if (v := sym.imm_hex(args[1])) != None:
+                    write_rom([0xB4, int(v[1], 16), 0xA5])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([0xB4, int(v[1]), 0xA5])
+                elif (v := sym.sfr(args[1])) != None:
+                    write_rom([0xB4, v, 0xA5])
+                elif (v := sym.hex(args[1])) != None:
+                    write_rom([0xB5, int(v[1], 16), 0xA5])
+                elif (v := sym.dec(args[1])) != None:
+                    write_rom([0xB5, int(v[1]), 0xA5])
+                else:
+                    ins_err(ins, f_line)
+            elif (v := sym.internal_R_ram(args[0])) != None:
+                opcode = 0xB6 + int(v[1])
+                if (v := sym.imm_hex(args[1])) != None:
+                    write_rom([opcode, int(v[1], 16), 0xA5])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([opcode, int(v[1]), 0xA5])
+                else:
+                    ins_err(ins, f_line)
+            elif (v := sym.general_reg(args[0])) != None:
+                opcode = 0xB8 + int(v[1])
+                if (v := sym.imm_hex(args[1])) != None:
+                    write_rom([opcode, int(v[1], 16), 0xA5])
+                elif (v := sym.imm_dec(args[1])) != None:
+                    write_rom([opcode, int(v[1]), 0xA5])
+                else:
+                    ins_err(ins, f_line)
+            else:
+                ins_err(ins, f_line)
+            if (v := sym.normal_word(args[2])) != None:
+                label_process("CJNE", v[1])
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
@@ -740,11 +777,13 @@ def replace_label():
                 offset = twos_comp(label_addr - PTR)
                 ROM[PTR] = offset
                 PTR += 1
-            elif ins in ["JC", "JNC", "JZ", "JNZ", "SJMP"]:
+                T += 1
+            elif ins in ["JC", "JNC", "JZ", "JNZ", "SJMP", "CJNE"]:
                 label_addr = int(search_label(l, 11), 2)
                 offset = twos_comp(label_addr - PTR - 1)
                 ROM[PTR] = offset
                 PTR += 1
+                T += 1
             elif ins == "AJMP":
                 addr11 = search_label(l, 11)
                 ROM[PTR:PTR + 2] = [
@@ -752,6 +791,7 @@ def replace_label():
                     int(addr11[0:8][::-1], 2)
                 ]
                 PTR += 2
+                T += 1
             elif ins == "ACALL":
                 addr11 = search_label(l, 11)
                 ROM[PTR:PTR + 2] = [
@@ -759,6 +799,7 @@ def replace_label():
                     int(addr11[0:8][::-1], 2)
                 ]
                 PTR += 2
+                T += 1
             elif ins == "LJMP":
                 addr16 = search_label(l, 16)
                 ROM[PTR:PTR + 3] = [
@@ -767,6 +808,7 @@ def replace_label():
                     int(addr16[0:8][::-1], 2)
                 ]
                 PTR += 3
+                T += 1
             elif ins == "LCALL":
                 addr16 = search_label(l, 16)
                 ROM[PTR:PTR + 3] = [
@@ -775,6 +817,7 @@ def replace_label():
                     int(addr16[0:8][::-1], 2)
                 ]
                 PTR += 3
+                T += 1
             else:
                 PTR += 1
         else:
