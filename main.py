@@ -132,8 +132,7 @@ class syntax_match():
         self.normal_word = lambda x: re.match(r"^(\w*?)$", x)  # LABEL
         self.hex = lambda x: re.match(r"^([0-9A-F]+?)H$", x)  # EEH
         self.dec = lambda x: re.match(r"^([0-9]+?)$", x)  # 255
-        self.imm_hex = lambda x: re.match(r"^#([0-9A-F]+?)H$", x
-                                          )  # hashtag EEH
+        self.imm_hex = lambda x: re.match(r"^#([0-9A-F]+?)H$", x) # hashtag EEH
         self.imm_dec = lambda x: re.match(r"^#([0-9]+?)$", x)  # hashtag 255
         self.internal_R_ram = lambda x: re.match(r"^@R(\d?)", x)  # @R0
         self.general_reg = lambda x: re.match(r"^R(\d?)", x)  # R7
@@ -219,10 +218,8 @@ def pass_1st(asm_code):
     optab = []
     for f_line, ll in asm_code:
         # label
-        label = re.match(r"^(\w*?):", ll)
-        if label != None:
-            label = label[1]
-            mark_label(label)
+        if (label := sym.label(ll)) != None:
+            mark_label(label[1])
             continue
         # instructions
         instruction = ll.split()
