@@ -678,6 +678,16 @@ def pass_2nd(optab):
             else:
                 ins_err(ins, f_line)
             write_rom([0x80, offset])
+        elif ins == "MOVC":
+            if args[0] == "A":
+                if args[1] == "@A+DPTR":
+                    write_rom([0x93])
+                elif args[1] == "@A+PC":
+                    write_rom(0x83)
+                else:
+                    ins_err(ins, f_line)
+            else:
+                ins_err(ins, f_line)
         else:
             pass
             # err_line(f"unknown instruction \"{ins}\"", f_line)
