@@ -1069,6 +1069,7 @@ def replace_label():
                         if SYMTAB[k] > int(addr16, 2):
                             SYMTAB[k] += 1
                     addr16 = search_label(l, 16)
+                    ROM.insert(PTR+2, 0xA5)
                     ROM[PTR:PTR + 3] = [
                         0x02,
                         int(addr16[:8], 2),
