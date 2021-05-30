@@ -2,7 +2,7 @@
 import re
 import os
 
-ROM = [-1] * (2**16)
+ROM = [-1] * (2 ** 16)
 LOCCTR = 0
 SYMTAB = {}
 LABELPROCESSTABLE = []
@@ -66,13 +66,21 @@ SFRs_bit = {
     "P3.6": 0xB6,
     "P3.7": 0xB7,
     "TCON.0": 0x88,
+    "IT0": 0x88,
     "TCON.1": 0x89,
+    "IE0": 0x89,
     "TCON.2": 0x8A,
+    "IT1": 0x8A,
     "TCON.3": 0x8B,
+    "IE1": 0x8B,
     "TCON.4": 0x8C,
+    "TR0": 0x8C,
     "TCON.5": 0x8D,
+    "TF0": 0x8D,
     "TCON.6": 0x8E,
+    "TR1": 0x8E,
     "TCON.7": 0x8F,
+    "TF1": 0x8F,
     "SCON.0": 0x98,
     "SCON.1": 0x99,
     "SCON.2": 0x9A,
@@ -135,14 +143,13 @@ SFRs_bit = {
 }
 
 
-class syntax_match():
+class syntax_match:
     def __init__(self) -> None:
         self.label = lambda x: re.match(r"^(\w*?):", x)  # MAIN:
         self.normal_word = lambda x: re.match(r"^(\w*?)$", x)  # LABEL
         self.hex = lambda x: re.match(r"^([0-9A-F]+?)H$", x)  # EEH
         self.dec = lambda x: re.match(r"^([0-9]+?)$", x)  # 255
-        self.imm_hex = lambda x: re.match(r"^#([0-9A-F]+?)H$", x
-                                          )  # hashtag EEH
+        self.imm_hex = lambda x: re.match(r"^#([0-9A-F]+?)H$", x)  # hashtag EEH
         self.imm_dec = lambda x: re.match(r"^#([0-9]+?)$", x)  # hashtag 255
         self.internal_R_ram = lambda x: re.match(r"^@R(\d?)", x)  # @R0
         self.general_reg = lambda x: re.match(r"^R(\d?)", x)  # R7
@@ -221,7 +228,7 @@ def remove_space_comment(asm_code):
     for f_line, ll in enumerate(asm_code.split("\n")):
         f_line += 1
         ll = ll.lstrip()
-        ll = re.sub(';(.*)', "", ll)
+        ll = re.sub(";(.*)", "", ll)
         if len(ll) == 0:
             continue
         clean_asm.append((f_line, ll))
@@ -231,7 +238,7 @@ def remove_space_comment(asm_code):
 def twos_comp(val):
     if val >= 0:
         return val
-    return int("{:08b}".format((-val ^ 0xff) + 1), 2)
+    return int("{:08b}".format((-val ^ 0xFF) + 1), 2)
 
 
 def pass_1st(asm_code):
@@ -429,7 +436,7 @@ def pass_2nd(optab):
             else:
                 ins_err(ins, f_line)
             write_rom([0x30, bit_addr, offset])
-        elif ins == "RET":
+        elif ins == "RETI":
             write_rom([0x32])
         elif ins == "RLC":
             if args[0] != "A":
@@ -830,18 +837,18 @@ def pass_2nd(optab):
             else:
                 ins_err(ins, f_line)
         elif ins == "CPL":
-            check_args(ins, args, [2], f_line)
+            check_args(ins, args, [1], f_line)
             if args[0] == "A":
                 write_rom([0xF4])
             elif args[0] == "C":
                 write_rom([0xB3])
             else:
-                if (v := sym.sfr_bit(args[1])) != None:
-                    write_rom([0xB2 + v])
-                elif (v := sym.hex(args[1])) != None:
-                    write_rom([0xB2, int(v[1], 16)])
-                elif (v := sym.dec(args[1])) != None:
-                    write_rom([0xB2, int(v[1])])
+                if (v := sym.sfr_bit(args[0])) != None:
+                    write_rom([0xB2, v])
+                elif (v := sym.hex(args[0])) != None:
+                    write_rom([0xB2, int(v[0], 16)])
+                elif (v := sym.dec(args[0])) != None:
+                    write_rom([0xB2, int(v[0])])
                 else:
                     ins_err(ins, f_line)
         elif ins == "CJNE":
@@ -1002,7 +1009,7 @@ def pass_2nd(optab):
         elif ins == "END":
             break
         else:
-            err_line(f"unknown instruction \"{ins}\"", f_line)
+            err_line(f'unknown instruction "{ins}"', f_line)
 
 
 def linker():
@@ -1014,8 +1021,16 @@ def linker():
             ins = now["instruction"]
             l = now["label"]
             if ins in [
-                    "JB", "JNB", "JBC", "JC", "JNC", "JZ", "JNZ", "SJMP",
-                    "CJNE", "DJNZ"
+                "JB",
+                "JNB",
+                "JBC",
+                "JC",
+                "JNC",
+                "JZ",
+                "JNZ",
+                "SJMP",
+                "CJNE",
+                "DJNZ",
             ]:
                 label_addr = int(search_label(l, 11), 2)
                 offset = twos_comp(label_addr - PTR - 1)
@@ -1024,21 +1039,17 @@ def linker():
                 T += 1
             elif ins == "AJMP":
                 addr11 = search_label(l, 11)
-                ROM[PTR:PTR +
-                    2] = [int(addr11[:3] + "00001", 2),
-                          int(addr11[3:], 2)]
+                ROM[PTR : PTR + 2] = [int(addr11[:3] + "00001", 2), int(addr11[3:], 2)]
                 PTR += 2
                 T += 1
             elif ins == "ACALL":
                 addr11 = search_label(l, 11)
-                ROM[PTR:PTR +
-                    2] = [int(addr11[:3] + "10001", 2),
-                          int(addr11[3:], 2)]
+                ROM[PTR : PTR + 2] = [int(addr11[:3] + "10001", 2), int(addr11[3:], 2)]
                 PTR += 2
                 T += 1
             elif ins == "LJMP":
                 addr16 = search_label(l, 16)
-                ROM[PTR:PTR + 3] = [
+                ROM[PTR : PTR + 3] = [
                     0x02,
                     int(addr16[:8], 2),
                     int(addr16[8:], 2),
@@ -1047,7 +1058,7 @@ def linker():
                 T += 1
             elif ins == "LCALL":
                 addr16 = search_label(l, 16)
-                ROM[PTR:PTR + 3] = [
+                ROM[PTR : PTR + 3] = [
                     0x12,
                     int(addr16[:8], 2),
                     int(addr16[8:], 2),
@@ -1058,9 +1069,9 @@ def linker():
                 addr16 = search_label(l, 16)
                 if "{:016b}".format(PTR + 2)[:5] == addr16[:5]:
                     addr11 = search_label(l, 11)
-                    ROM[PTR:PTR + 2] = [
+                    ROM[PTR : PTR + 2] = [
                         int(addr11[:3] + "00001", 2),
-                        int(addr11[3:], 2)
+                        int(addr11[3:], 2),
                     ]
                     PTR += 2
                     T += 1
@@ -1069,8 +1080,8 @@ def linker():
                         if SYMTAB[k] > int(addr16, 2):
                             SYMTAB[k] += 1
                     addr16 = search_label(l, 16)
-                    ROM.insert(PTR+2, 0xA5)
-                    ROM[PTR:PTR + 3] = [
+                    ROM.insert(PTR + 2, 0xA5)
+                    ROM[PTR : PTR + 3] = [
                         0x02,
                         int(addr16[:8], 2),
                         int(addr16[8:], 2),
@@ -1097,11 +1108,12 @@ def print_hex():
             data_str = "".join(["{:02x}".format(i) for i in data])
             address = PTR - byte_count + 1
             record_type = 0
-            record = "{:02x}{:04x}{:02x}{}".format(byte_count, address,
-                                                   record_type, data_str)
+            record = "{:02x}{:04x}{:02x}{}".format(
+                byte_count, address, record_type, data_str
+            )
             checksum = 0
             for i in range(0, len(record), 2):
-                checksum += int(record[i:i + 2], 16)
+                checksum += int(record[i : i + 2], 16)
             checksum = 256 - (checksum % 256)
             print(":{}{:02x}".format(record, checksum))
             data = []
@@ -1130,5 +1142,5 @@ def main():
         parser(f.read())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
